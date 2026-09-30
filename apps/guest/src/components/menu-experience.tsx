@@ -248,7 +248,7 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
               <p className="mt-2 text-sm leading-relaxed" style={{ color: theme.muted }}>{textOf(pkg.rules, lang)}</p>
               <div className="mt-4 flex items-center justify-between">
                 <span>{copy.guests}</span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" dir="ltr">
                   <button type="button" className="grid size-12 place-items-center rounded-full text-2xl" style={{ background: theme.bg }} aria-label="-" onClick={() => setGuests((value) => Math.max(pkg.minGuests, value - 1))}>−</button>
                   <span className="w-8 text-center text-2xl font-semibold tabular-nums">{guests}</span>
                   <button type="button" className="grid size-12 place-items-center rounded-full text-2xl" style={{ background: theme.bg }} aria-label="+" onClick={() => setGuests((value) => Math.min(pkg.maxGuests, value + 1))}>+</button>
@@ -306,7 +306,7 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
               </ul>
               <div className="mt-4 space-y-1 text-sm" style={{ color: theme.muted }}>
                 <div className="flex justify-between"><span>{copy.subtotal}</span><span>{formatIls(preview.subtotalCents, lang)}</span></div>
-                {preview.discountCents > 0 ? <div className="flex justify-between"><span>{copy.discount}</span><span>−{formatIls(preview.discountCents, lang)}</span></div> : null}
+                {preview.discountCents > 0 ? <div className="flex justify-between"><span>{copy.discount}</span><span>{formatIls(-preview.discountCents, lang)}</span></div> : null}
                 <div className="flex justify-between text-lg font-semibold" style={{ color: theme.ink }}>
                   <span>{copy.total}</span>
                   <span>{formatIls(preview.totalCents, lang)}</span>

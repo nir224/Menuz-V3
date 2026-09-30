@@ -23,12 +23,16 @@ export function textOf(value: { he: string; en: string }, lang: "he" | "en"): st
 }
 
 export function formatIls(cents: number, lang: "he" | "en"): string {
-  const amount = cents / 100;
-  return new Intl.NumberFormat(lang === "he" ? "he-IL" : "en-IL", {
-    style: "currency",
-    currency: "ILS",
-    maximumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  }).format(amount);
+  const negative = cents < 0;
+  const abs = Math.abs(cents);
+  const digits = abs % 100 === 0 ? 0 : 2;
+  const number = new Intl.NumberFormat(lang === "he" ? "he-IL" : "en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(abs / 100);
+  const body = lang === "he" ? `${number} ש״ח` : `NIS ${number}`;
+  if (!negative) return body;
+  return lang === "he" ? `${number}− ש״ח` : `−${body}`;
 }
 
 export function priceCart(snapshot: VenueSnapshot, cart: CartLine[]): PricedCart {

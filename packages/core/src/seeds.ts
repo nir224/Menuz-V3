@@ -131,7 +131,7 @@ export const seeds: VenueSnapshot[] = [
     version: 1,
     publishedAt,
     contentNote: {
-      he: "שמות הבירות והמחירים לפי מחירון הבקבוקים באתר Beer Time. מנות האוכל מסומנות כהערכת ליד, אין להן מחירון שולחן פומבי שמצאנו.",
+      he: "שמות הבירות והמחירים לפי מחירון הבקבוקים באתר ביר טיים. מנות האוכל מסומנות כהערכת ליד, ואין להן מחירון שולחן שפורסם.",
       en: "Beer names and prices follow the bottle list on the Beer Time site. Food dishes are marked as lead estimates. We did not find a published table menu for them.",
     },
     venue: {
