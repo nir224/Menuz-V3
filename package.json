@@ -1,0 +1,11 @@
+{
+  "name": "menuz",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n api,guest,admin -c blue,green,yellow \"npm run dev --prefix apps/api\" \"npm run dev --prefix apps/guest\" \"npm run dev --prefix apps/admin\"",
+    "test": "npm test --prefix packages/core"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
