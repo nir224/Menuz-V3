@@ -1,38 +1,32 @@
-# MenuzV3
+# Menuz Tableside
 
-דמו חי של **Menuz Tableside** — תפריט מובייל שנפתח ב-QR, מוכר חבילת קבוצה, ושולח הזמנה למסך צוות.
+Mobile menu for three Rishon LeZion leads. A guest opens a table URL, builds a group package in Hebrew or English, and sends the order to pay at the table. Staff see the ticket on a separate admin host.
 
-שלושה עסקים אמיתיים בראשון לציון, כל אחד עם סקין, תמונות ומנות שמתאימים למקום:
-
-| עסק | סוג | כתובת |
+| Lead | Address | Package |
 |---|---|---|
-| **דדה** | מסעדה גאורגית | הרצל 75 |
-| **שף עידן הלפרין** | חוויה קולינרית | מוצקין 5 |
-| **BEER TIME** | ביר הול | הרצל 47 |
+| דדה | Herzl 75 | סופרה |
+| שף עידן הלפרין | Motzkin 5 | שולחן השף (demo menu) |
+| BEER TIME | Herzl 47 | הסיבוב / The Round |
 
-## איך לפתוח
+Deda prices follow the public menu (regular price, not the member price). Beer Time bottle names and prices follow the shop list on beer-time.co.il. Food at Beer Time, and the whole chef menu, are marked as estimates or a demo.
 
-פתחו `index.html` בדפדפן, עדיף בחלון ברוחב טלפון. גם ב-GitHub Pages של הריפו.
+## Run locally
 
-1. בחרו עסק
-2. בנו סופרה / The Round / שולחן השף
-3. שלחו הזמנה
-4. עברו לטאב **צוות** לראות את הכרטיס
+```bash
+npm install
+npm install --prefix packages/core
+npm install --prefix apps/api
+npm install --prefix apps/guest
+npm install --prefix apps/admin
+npm run dev
+```
 
-שני טאבים במקביל עובדים כי הכרטיסים נשמרים ב-`localStorage`.
+- Guest menu: http://127.0.0.1:43123
+- Admin and staff board: http://127.0.0.1:43127
+- API: http://127.0.0.1:43121
 
-## מה אמיתי ומה דמו
+Admin password: `tableside`
 
-- **דדה** ו-**BEER TIME**: שמות מנות ומחירים לפי מחירונים פומביים (Wolt / BestRest). לא הזמנה חיה ולא POS.
-- **שף עידן הלפרין**: אין תפריט פומבי מלא. התפריט כאן הוא דמו בסגנון המקום לפי כרטיס Google.
-- אין סליקה אמיתית, אין שליחה למטבח.
+Open a venue from the guest home (table 4), add the package, and send the order. On the admin host, open the order board. The ticket is unpaid. Edit a price, publish, and reload the guest menu to see the new price.
 
-## מה כבר עובד ב-Stage 1
-
-- בחירת עסק / סקין
-- תפריט RTL, אלרגנים, 18+, סימון אזל
-- חבילת קבוצה עם החלפות ומחיר חי
-- סל, תשלום בשולחן או דמו
-- מסך צוות: חדש → מוכן → הוגש
-
-מקור הפרוטוטייפ והבריפים נשארו בריפו.
+`index.html` is the earlier single-venue prototype. The briefs in this repo are the Stage 1 source documents.

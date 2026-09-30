@@ -1,0 +1,6 @@
+node_modules
+.next
+data/orders.json
+data/published
+data/drafts
+*.log
