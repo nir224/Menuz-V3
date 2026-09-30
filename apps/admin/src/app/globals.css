@@ -128,3 +128,7 @@
     @apply font-sans;
   }
 }
+
+.font-serif {
+  font-family: var(--font-serif), "Frank Ruhl Libre", serif;
+}

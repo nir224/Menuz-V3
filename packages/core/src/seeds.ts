@@ -1,3 +1,4 @@
+import { gardenVenues } from "./garden";
 import type { MenuItem, Text, VenueSnapshot } from "./types";
 
 const alcoholNotice: Text = {
@@ -18,10 +19,11 @@ function item(partial: MenuItem): MenuItem {
 
 const publishedAt = "2026-09-30T09:00:00.000Z";
 
-export const seeds: VenueSnapshot[] = [
+const leadVenues: VenueSnapshot[] = [
   {
     version: 1,
     publishedAt,
+    seedKey: "2026-09-30-garden",
     contentNote: {
       he: "שמות ומחירים לפי התפריט הפומבי של דדה, במחיר רגיל ולא מחיר מועדון. זו הצעת תפריט לליד, לא הזמנה חיה.",
       en: "Names and prices follow Deda's public menu, at the regular price rather than the member price. This is a lead menu, not a live order.",
@@ -31,6 +33,10 @@ export const seeds: VenueSnapshot[] = [
       name: { he: "דדה", en: "Deda" },
       kind: { he: "מסעדה גאורגית", en: "Georgian restaurant" },
       address: { he: "הרצל 75, ראשון לציון", en: "Herzl 75, Rishon LeZion" },
+      blurb: { he: "חוויה גאורגית מקומית — סופרה, חצ׳פורי וחינקלי סביב השולחן.", en: "A local Georgian table — supra, khachapuri and khinkali." },
+      hero: "/previews/dedemenu.jpg",
+      skin: "cards",
+      homeSort: 3,
       theme: { bg: "#1a100c", ink: "#f6efe6", muted: "#cbbba8", accent: "#e0b15a", accentInk: "#1a100c", card: "#2a1b14" },
       alcoholNotice,
       tables: tables(),
@@ -71,6 +77,7 @@ export const seeds: VenueSnapshot[] = [
         maxGuests: 12,
         defaultGuests: 4,
         discountPct: 8,
+        active: true,
         components: [
           { slot: "bread", label: { he: "חצ׳פורי לכל אחד", en: "Khachapuri each" }, mode: "per_guest", chunkSize: 1, qty: 1, defaultItemId: "d_imeruli", options: ["d_imeruli", "d_megruli", "d_acharuli"] },
           { slot: "khinkali", label: { he: "חינקלי לשולחן", en: "Khinkali for the table" }, mode: "per_group_chunk", chunkSize: 4, qty: 1, defaultItemId: "d_khinkali", options: ["d_khinkali", "d_khinkali_cheese"] },
@@ -82,6 +89,7 @@ export const seeds: VenueSnapshot[] = [
   {
     version: 1,
     publishedAt,
+    seedKey: "2026-09-30-garden",
     contentNote: {
       he: "אין תפריט פומבי מלא לשף עידן הלפרין. המנות כאן הן הדגמה בסגנון המקום לפי הכרטיס, לא התפריט האמיתי.",
       en: "Chef Idan Halperin has no full public menu. These dishes are a demo in the style of the place, not the real menu.",
@@ -91,6 +99,10 @@ export const seeds: VenueSnapshot[] = [
       name: { he: "שף עידן הלפרין", en: "Chef Idan Halperin" },
       kind: { he: "חוויה קולינרית", en: "Culinary experience" },
       address: { he: "מוצקין 5, ראשון לציון", en: "Motzkin 5, Rishon LeZion" },
+      blurb: { he: "שולחן שף אינטימי — מנות קטנות, יין, וקצב של מטבח פתוח.", en: "An intimate chef's table — small plates, wine, and an open kitchen." },
+      hero: "/previews/idanmenu.jpg",
+      skin: "cards",
+      homeSort: 5,
       theme: { bg: "#121316", ink: "#f4f1ea", muted: "#b7b3aa", accent: "#d7c4a3", accentInk: "#1a1814", card: "#1d1e24" },
       alcoholNotice,
       tables: tables(8),
@@ -118,6 +130,7 @@ export const seeds: VenueSnapshot[] = [
         maxGuests: 8,
         defaultGuests: 4,
         discountPct: 0,
+        active: true,
         components: [
           { slot: "main", label: { he: "עיקרית לכל אחד", en: "Main each" }, mode: "per_guest", chunkSize: 1, qty: 1, defaultItemId: "c_fish", options: ["c_fish", "c_meat"] },
           { slot: "bread", label: { he: "לחם לשולחן", en: "Bread for the table" }, mode: "per_group_chunk", chunkSize: 4, qty: 1, defaultItemId: "c_bread", options: ["c_bread"] },
@@ -130,6 +143,7 @@ export const seeds: VenueSnapshot[] = [
   {
     version: 1,
     publishedAt,
+    seedKey: "2026-09-30-garden",
     contentNote: {
       he: "שמות הבירות והמחירים לפי מחירון הבקבוקים באתר ביר טיים. מנות האוכל מסומנות כהערכת ליד, ואין להן מחירון שולחן שפורסם.",
       en: "Beer names and prices follow the bottle list on the Beer Time site. Food dishes are marked as lead estimates. We did not find a published table menu for them.",
@@ -139,6 +153,10 @@ export const seeds: VenueSnapshot[] = [
       name: { he: "BEER TIME", en: "BEER TIME" },
       kind: { he: "ביר הול", en: "Beer hall" },
       address: { he: "הרצל 47, ראשון לציון", en: "Herzl 47, Rishon LeZion" },
+      blurb: { he: "בירות בינלאומיות, מולים, שרימפס ונקניקיות מול הבר.", en: "International bottles, mussels, shrimp and sausages at the bar." },
+      hero: "/previews/beertimemenu.jpg",
+      skin: "cards",
+      homeSort: 4,
       theme: { bg: "#12140c", ink: "#f4f1e4", muted: "#c2bda6", accent: "#e2a322", accentInk: "#1a1408", card: "#1e2214" },
       alcoholNotice,
       tables: tables(),
@@ -168,6 +186,7 @@ export const seeds: VenueSnapshot[] = [
         maxGuests: 12,
         defaultGuests: 4,
         discountPct: 10,
+        active: true,
         components: [
           { slot: "drink", label: { he: "בירה לכל אחד", en: "Beer each" }, mode: "per_guest", chunkSize: 1, qty: 1, defaultItemId: "bt_lowen", options: ["bt_lowen", "bt_cesu", "bt_stiegl", "bt_hof", "bt_hazy"] },
           { slot: "chips", label: { he: "צ׳יפס לשולחן", en: "Chips for the table" }, mode: "per_group_chunk", chunkSize: 4, qty: 1, defaultItemId: "bt_chips", options: ["bt_chips"] },
@@ -177,3 +196,5 @@ export const seeds: VenueSnapshot[] = [
     ],
   },
 ];
+
+export const seeds: VenueSnapshot[] = [...gardenVenues, ...leadVenues];

@@ -1,10 +1,10 @@
-import type { Lang } from "./types";
+import type { Lang, OrderStatus } from "./types";
 
 export const chrome = {
   he: {
     brand: "Menuz",
     pickVenue: "בחרו עסק",
-    pickVenueLead: "שלושה לידים בראשון לציון. התפריט נפתח בלי אפליקציה, והתשלום אצל הצוות.",
+    pickVenueLead: "חמישה תפריטים בראשון לציון. התפריט נפתח בלי אפליקציה, והתשלום אצל הצוות.",
     openTable: "פתיחת שולחן 4",
     table: "שולחן",
     language: "שפה",
@@ -54,12 +54,15 @@ export const chrome = {
     qty: "כמות",
     remove: "הסרה",
     status: {
-      received: "התקבלה",
-      accepted: "בטיפול",
+      received: "חדשה",
+      accepted: "התקבלה",
       ready: "מוכנה",
       served: "הוגשה",
       void: "בוטלה",
     },
+    elapsed: "זמן מהשליחה",
+    packages: "חבילות",
+    noPackages: "אין חבילה פעילה כרגע.",
     allergens: {
       gluten: "גלוטן",
       milk: "חלב",
@@ -75,7 +78,7 @@ export const chrome = {
   en: {
     brand: "Menuz",
     pickVenue: "Choose a venue",
-    pickVenueLead: "Three leads in Rishon LeZion. The menu opens with no app, and you pay the staff.",
+    pickVenueLead: "Five menus in Rishon LeZion. The menu opens with no app, and you pay the staff.",
     openTable: "Open table 4",
     table: "Table",
     language: "Language",
@@ -125,12 +128,15 @@ export const chrome = {
     qty: "Qty",
     remove: "Remove",
     status: {
-      received: "Received",
+      received: "New",
       accepted: "Accepted",
       ready: "Ready",
       served: "Served",
       void: "Void",
     },
+    elapsed: "Time since it was sent",
+    packages: "Packages",
+    noPackages: "No package is on right now.",
     allergens: {
       gluten: "Gluten",
       milk: "Milk",
@@ -147,4 +153,16 @@ export const chrome = {
 
 export function t(lang: Lang) {
   return chrome[lang];
+}
+
+export function statusLine(lang: Lang, status: OrderStatus, waiterName = ""): string {
+  const name = waiterName.trim();
+  if (status === "received") return lang === "he" ? "חדשה" : "New";
+  if (status === "accepted") {
+    if (!name) return lang === "he" ? "התקבלה" : "Accepted";
+    return lang === "he" ? `התקבלה על ידי ${name}` : `Accepted by ${name}`;
+  }
+  if (status === "ready") return lang === "he" ? "מוכנה" : "Ready";
+  if (status === "served") return lang === "he" ? "הוגשה" : "Served";
+  return lang === "he" ? "בוטלה" : "Void";
 }

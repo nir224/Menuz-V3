@@ -1,13 +1,17 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cors from "@fastify/cors";
 import {
+  basicCategories,
   priceCart,
   seeds,
   type CartLine,
+  type MenuCategory,
+  type MenuPackage,
   type OrderStatus,
+  type Text,
   type VenueSnapshot,
 } from "@menuz/core";
 import Fastify from "fastify";
@@ -36,6 +40,7 @@ type StoredOrder = {
   singles: ReturnType<typeof priceCart>["singles"];
   waitMinutes: [number, number];
   createdAt: string;
+  waiterName: string;
 };
 
 type OrderFile = {
@@ -64,17 +69,20 @@ async function ensureStore() {
   await mkdir(publishedDir, { recursive: true });
   await mkdir(draftDir, { recursive: true });
   for (const seed of seeds) {
-    const published = path.join(publishedDir, `${seed.venue.slug}.json`);
-    const draft = path.join(draftDir, `${seed.venue.slug}.json`);
-    try {
-      await readFile(published, "utf8");
-    } catch {
-      await writeFile(published, JSON.stringify(seed, null, 2));
+    const publishedPath = path.join(publishedDir, `${seed.venue.slug}.json`);
+    const draftPath = path.join(draftDir, `${seed.venue.slug}.json`);
+    const published = await readSnapshot(publishedDir, seed.venue.slug);
+    const stale = !published || (published.version === 1 && published.seedKey !== seed.seedKey);
+    if (stale) {
+      const body = JSON.stringify(seed, null, 2);
+      await writeFile(publishedPath, body);
+      await writeFile(draftPath, body);
+      continue;
     }
     try {
-      await readFile(draft, "utf8");
+      await readFile(draftPath, "utf8");
     } catch {
-      await writeFile(draft, JSON.stringify(seed, null, 2));
+      await writeFile(draftPath, JSON.stringify(published, null, 2));
     }
   }
   try {
@@ -148,21 +156,35 @@ await app.register(cors, { origin: true });
 
 app.get("/api/v1/health", async () => ({ ok: true }));
 
-app.get("/api/v1/venues", async () => {
-  const list = [];
-  for (const seed of seeds) {
-    const snapshot = await readSnapshot(publishedDir, seed.venue.slug);
-    if (!snapshot) continue;
-    list.push({
-      slug: snapshot.venue.slug,
-      name: snapshot.venue.name,
-      kind: snapshot.venue.kind,
-      address: snapshot.venue.address,
-      theme: snapshot.venue.theme,
-      version: snapshot.version,
-    });
+async function listPublished(): Promise<VenueSnapshot[]> {
+  const files = await readdir(publishedDir);
+  const snapshots: VenueSnapshot[] = [];
+  for (const file of files) {
+    if (!file.endsWith(".json")) continue;
+    const snapshot = await readSnapshot(publishedDir, file.slice(0, -5));
+    if (snapshot) snapshots.push(snapshot);
   }
-  return { venues: list };
+  snapshots.sort((a, b) => (a.venue.homeSort ?? 100) - (b.venue.homeSort ?? 100) || a.venue.name.he.localeCompare(b.venue.name.he, "he"));
+  return snapshots;
+}
+
+function venueCard(snapshot: VenueSnapshot) {
+  return {
+    slug: snapshot.venue.slug,
+    name: snapshot.venue.name,
+    kind: snapshot.venue.kind,
+    address: snapshot.venue.address,
+    theme: snapshot.venue.theme,
+    blurb: snapshot.venue.blurb ?? snapshot.contentNote,
+    hero: snapshot.venue.hero ?? "",
+    skin: snapshot.venue.skin ?? "cards",
+    version: snapshot.version,
+  };
+}
+
+app.get("/api/v1/venues", async () => {
+  const venues = (await listPublished()).map(venueCard);
+  return { venues };
 });
 
 app.get<{ Params: { slug: string } }>("/api/v1/venues/:slug", async (request, reply) => {
@@ -188,9 +210,96 @@ app.get<{ Params: { slug: string } }>("/api/v1/admin/venues/:slug", async (reque
   return { draft, publishedVersion: published?.version ?? 0 };
 });
 
+app.post<{
+  Body: {
+    nameHe?: string;
+    nameEn?: string;
+    addressHe?: string;
+    addressEn?: string;
+    kindHe?: string;
+    kindEn?: string;
+    tableCount?: number;
+    copyFrom?: string;
+  };
+}>("/api/v1/admin/venues", async (request, reply) => {
+  if (!verify(tokenFrom(request))) return reply.code(401).send({ error: "unauthorized" });
+  const body = request.body ?? {};
+  const name = cleanText(body.nameHe, body.nameEn, 80);
+  const address = cleanText(body.addressHe, body.addressEn, 120);
+  const kind = cleanText(body.kindHe, body.kindEn, 80);
+  const tableCount = Number(body.tableCount);
+  if (!name || !address || !kind || !Number.isInteger(tableCount) || tableCount < 1 || tableCount > 40) {
+    return reply.code(400).send({ error: "bad_venue" });
+  }
+  return exclusive(async () => {
+    const sourceSlug = (body.copyFrom ?? "").trim();
+    const source = sourceSlug ? (await readSnapshot(draftDir, sourceSlug)) ?? (await readSnapshot(publishedDir, sourceSlug)) : null;
+    if (sourceSlug && !source) return reply.code(404).send({ error: "unknown_venue" });
+    const existing = new Set((await listPublished()).map((snapshot) => snapshot.venue.slug));
+    for (const file of await readdir(draftDir)) {
+      if (file.endsWith(".json")) existing.add(file.slice(0, -5));
+    }
+    const slug = uniqueSlug(name.en || name.he, existing);
+    const now = new Date().toISOString();
+    const snapshot: VenueSnapshot = source
+      ? structuredClone(source)
+      : {
+          version: 1,
+          publishedAt: now,
+          contentNote: {
+            he: "עסק חדש. אין עדיין מנות.",
+            en: "A new business. No dishes yet.",
+          },
+          venue: {
+            slug,
+            name,
+            kind,
+            address,
+            theme: {
+              bg: "#1a100c",
+              ink: "#f6efe6",
+              muted: "#cbbba8",
+              accent: "#e0b15a",
+              accentInk: "#1a100c",
+              card: "#2a1b14",
+            },
+            alcoholNotice: {
+              he: "אלכוהול מגיל 18. ייתכן שיבקשו תעודה מזהה.",
+              en: "Alcohol is 18+. Staff may ask for ID.",
+            },
+            tables: makeTables(tableCount),
+            blurb: { he: "", en: "" },
+            hero: "",
+            skin: "cards",
+            homeSort: 100,
+          },
+          categories: basicCategories(),
+          items: [],
+          packages: [],
+        };
+    snapshot.venue.slug = slug;
+    snapshot.venue.name = name;
+    snapshot.venue.address = address;
+    snapshot.venue.kind = kind;
+    snapshot.venue.tables = makeTables(tableCount);
+    snapshot.venue.homeSort = 100 + existing.size;
+    delete snapshot.seedKey;
+    snapshot.version = 1;
+    snapshot.publishedAt = now;
+    const saved = JSON.stringify(snapshot, null, 2);
+    await writeFile(path.join(draftDir, `${slug}.json`), saved);
+    await writeFile(path.join(publishedDir, `${slug}.json`), saved);
+    return reply.code(201).send({ draft: snapshot });
+  });
+});
+
 app.put<{
   Params: { slug: string };
-  Body: { items?: { id: string; priceCents: number; available: boolean }[] };
+  Body: {
+    items?: { id: string; priceCents: number; available: boolean }[];
+    categories?: MenuCategory[];
+    packages?: MenuPackage[];
+  };
 }>("/api/v1/admin/venues/:slug", async (request, reply) => {
   if (!verify(tokenFrom(request))) return reply.code(401).send({ error: "unauthorized" });
   return exclusive(async () => {
@@ -205,6 +314,18 @@ app.put<{
       }
       item.priceCents = next.priceCents;
       item.available = Boolean(next.available);
+    }
+    if (request.body?.categories) {
+      const categories = sanitizeCategories(request.body.categories);
+      if (!categories) return reply.code(400).send({ error: "bad_section" });
+      const ids = new Set(categories.map((category) => category.id));
+      if (draft.items.some((item) => !ids.has(item.categoryId))) return reply.code(400).send({ error: "bad_section" });
+      draft.categories = categories;
+    }
+    if (request.body?.packages) {
+      const packages = sanitizePackages(request.body.packages, new Set(draft.items.map((item) => item.id)));
+      if (!packages) return reply.code(400).send({ error: "bad_package" });
+      draft.packages = packages;
     }
     await writeFile(path.join(draftDir, `${draft.venue.slug}.json`), JSON.stringify(draft, null, 2));
     return { draft };
@@ -282,6 +403,7 @@ app.post<{
       singles: priced.singles,
       waitMinutes: [low, low + 4],
       createdAt: new Date().toISOString(),
+      waiterName: "",
     };
     file.orders.unshift(order);
     file.idem[key] = { orderId: order.id, at: order.createdAt };
@@ -306,7 +428,7 @@ app.get<{ Querystring: { venue?: string } }>("/api/v1/staff/orders", async (requ
   return { orders };
 });
 
-app.patch<{ Params: { id: string }; Body: { status?: OrderStatus } }>("/api/v1/staff/orders/:id", async (request, reply) => {
+app.patch<{ Params: { id: string }; Body: { status?: OrderStatus; waiterName?: string } }>("/api/v1/staff/orders/:id", async (request, reply) => {
   if (!verify(tokenFrom(request))) return reply.code(401).send({ error: "unauthorized" });
   const status = request.body?.status;
   if (!status) return reply.code(400).send({ error: "bad_status" });
@@ -315,6 +437,11 @@ app.patch<{ Params: { id: string }; Body: { status?: OrderStatus } }>("/api/v1/s
     const order = file.orders.find((entry) => entry.id === request.params.id);
     if (!order) return reply.code(404).send({ error: "unknown_order" });
     if (!allowedNext[order.status].includes(status)) return reply.code(400).send({ error: "bad_status" });
+    if (order.status === "received" && status === "accepted") {
+      const waiterName = (request.body?.waiterName ?? "").trim().slice(0, 40);
+      if (!waiterName) return reply.code(400).send({ error: "waiter_name" });
+      order.waiterName = waiterName;
+    }
     order.status = status;
     await writeOrders(file);
     broadcast(order.venueSlug, "status", order);
@@ -345,6 +472,111 @@ app.get<{ Querystring: { token?: string; venue?: string } }>("/api/v1/staff/orde
     listeners.delete(listener);
   });
 });
+
+function makeTables(count: number) {
+  return Array.from({ length: count }, (_, index) => {
+    const n = index + 1;
+    return { code: String(n), label: { he: `שולחן ${n}`, en: `Table ${n}` } };
+  });
+}
+
+function cleanText(he: unknown, en: unknown, max: number): Text | null {
+  if (typeof he !== "string" || typeof en !== "string") return null;
+  const left = he.trim().slice(0, max);
+  const right = en.trim().slice(0, max);
+  if (!left || !right) return null;
+  return { he: left, en: right };
+}
+
+function uniqueSlug(source: string, taken: Set<string>) {
+  const ascii = source
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  const base = ascii || "venue";
+  let slug = base;
+  let n = 2;
+  while (taken.has(slug)) {
+    slug = `${base}-${n}`;
+    n += 1;
+  }
+  return slug;
+}
+
+function sanitizeCategories(input: MenuCategory[]): MenuCategory[] | null {
+  if (!Array.isArray(input) || input.length < 1 || input.length > 40) return null;
+  const ids = new Set<string>();
+  const categories: MenuCategory[] = [];
+  for (const category of input) {
+    if (!category || typeof category.id !== "string" || !/^[a-z0-9-]{1,40}$/.test(category.id) || ids.has(category.id)) return null;
+    const name = cleanText(category.name?.he, category.name?.en, 80);
+    if (!name || !Number.isInteger(category.sort)) return null;
+    ids.add(category.id);
+    const next: MenuCategory = { id: category.id, name, sort: category.sort, hidden: Boolean(category.hidden) };
+    const note = category.note ? cleanText(category.note.he, category.note.en, 160) : null;
+    if (category.note && !note) return null;
+    if (note) next.note = note;
+    categories.push(next);
+  }
+  return categories;
+}
+
+function sanitizePackages(input: MenuPackage[], itemIds: Set<string>): MenuPackage[] | null {
+  if (!Array.isArray(input) || input.length > 12) return null;
+  const ids = new Set<string>();
+  const packages: MenuPackage[] = [];
+  for (const pkg of input) {
+    if (!pkg || typeof pkg.id !== "string" || !/^[a-z0-9-]{1,40}$/.test(pkg.id) || ids.has(pkg.id)) return null;
+    const name = cleanText(pkg.name?.he, pkg.name?.en, 80);
+    const tagline = cleanText(pkg.tagline?.he, pkg.tagline?.en, 180);
+    const rules = cleanText(pkg.rules?.he, pkg.rules?.en, 240);
+    if (!name || !tagline || !rules) return null;
+    if (![pkg.minGuests, pkg.maxGuests, pkg.defaultGuests, pkg.discountPct].every((value) => Number.isInteger(value))) return null;
+    if (pkg.minGuests < 1 || pkg.maxGuests > 40 || pkg.minGuests > pkg.maxGuests) return null;
+    if (pkg.defaultGuests < pkg.minGuests || pkg.defaultGuests > pkg.maxGuests) return null;
+    if (pkg.discountPct < 0 || pkg.discountPct > 90) return null;
+    if (!Array.isArray(pkg.components) || pkg.components.length < 1 || pkg.components.length > 8) return null;
+    const slots = new Set<string>();
+    const components = [];
+    for (const component of pkg.components) {
+      if (!component || typeof component.slot !== "string" || !/^[a-z0-9-]{1,40}$/.test(component.slot) || slots.has(component.slot)) return null;
+      const label = cleanText(component.label?.he, component.label?.en, 80);
+      if (!label) return null;
+      if (component.mode !== "per_guest" && component.mode !== "per_group_chunk") return null;
+      if (!Number.isInteger(component.qty) || component.qty < 1 || component.qty > 8) return null;
+      if (!Number.isInteger(component.chunkSize) || component.chunkSize < 1 || component.chunkSize > 20) return null;
+      if (!Array.isArray(component.options) || component.options.length < 1 || component.options.length > 12) return null;
+      if (component.options.some((id) => typeof id !== "string" || !itemIds.has(id))) return null;
+      if (!component.options.includes(component.defaultItemId)) return null;
+      slots.add(component.slot);
+      components.push({
+        slot: component.slot,
+        label,
+        mode: component.mode,
+        chunkSize: component.chunkSize,
+        qty: component.qty,
+        defaultItemId: component.defaultItemId,
+        options: [...component.options],
+      });
+    }
+    ids.add(pkg.id);
+    packages.push({
+      id: pkg.id,
+      name,
+      tagline,
+      rules,
+      minGuests: pkg.minGuests,
+      maxGuests: pkg.maxGuests,
+      defaultGuests: pkg.defaultGuests,
+      discountPct: pkg.discountPct,
+      active: pkg.active !== false,
+      components,
+    });
+  }
+  return packages;
+}
 
 await ensureStore();
 await app.listen({ port: PORT, host: "0.0.0.0" });

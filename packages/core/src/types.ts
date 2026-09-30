@@ -27,6 +27,7 @@ export type MenuItem = {
   vegetarian: boolean;
   glutenFree: boolean;
   priceSource: PriceSource;
+  image?: string;
 };
 
 export type PackageComponent = {
@@ -48,7 +49,17 @@ export type MenuPackage = {
   maxGuests: number;
   defaultGuests: number;
   discountPct: number;
+  /** Missing means active, so older snapshots stay on the guest menu. */
+  active?: boolean;
   components: PackageComponent[];
+};
+
+export type MenuCategory = {
+  id: string;
+  name: Text;
+  sort: number;
+  hidden?: boolean;
+  note?: Text;
 };
 
 export type VenueTheme = {
@@ -60,9 +71,13 @@ export type VenueTheme = {
   card: string;
 };
 
+export type VenueSkin = "cards" | "wood";
+
 export type VenueSnapshot = {
   version: number;
   publishedAt: string;
+  /** Bumped when the checked-in sample menu changes. Local edits with a higher version are kept. */
+  seedKey?: string;
   contentNote: Text;
   venue: {
     slug: string;
@@ -72,8 +87,12 @@ export type VenueSnapshot = {
     theme: VenueTheme;
     alcoholNotice: Text;
     tables: { code: string; label: Text }[];
+    blurb?: Text;
+    hero?: string;
+    skin?: VenueSkin;
+    homeSort?: number;
   };
-  categories: { id: string; name: Text; sort: number }[];
+  categories: MenuCategory[];
   items: MenuItem[];
   packages: MenuPackage[];
 };

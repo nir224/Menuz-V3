@@ -3,6 +3,7 @@ export const apiBase = "/menuz-api";
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   const response = await fetch(`${apiBase}${path}`, {
+    cache: "no-store",
     ...init,
     body: init?.body ?? (method === "GET" ? undefined : "{}"),
     headers: {

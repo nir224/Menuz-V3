@@ -55,6 +55,11 @@ export function priceCart(snapshot: VenueSnapshot, cart: CartLine[]): PricedCart
         continue;
       }
       if (!item.available) issues.push("sold_out");
+      const category = snapshot.categories.find((entry) => entry.id === item.categoryId);
+      if (category?.hidden) {
+        issues.push("unknown_item");
+        continue;
+      }
       const qty = line.qty;
       if (!Number.isInteger(qty) || qty < 1 || qty > 20) {
         issues.push("bad_qty");
@@ -75,7 +80,7 @@ export function priceCart(snapshot: VenueSnapshot, cart: CartLine[]): PricedCart
     }
 
     const pkg = packages.get(line.packageId);
-    if (!pkg) {
+    if (!pkg || pkg.active === false) {
       issues.push("unknown_package");
       continue;
     }

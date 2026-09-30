@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
-import { Noto_Sans_Hebrew, Noto_Serif_Hebrew } from "next/font/google";
+import { Frank_Ruhl_Libre, Heebo } from "next/font/google";
 import "./globals.css";
 
-const sans = Noto_Sans_Hebrew({
+const sans = Heebo({
   subsets: ["hebrew", "latin"],
   variable: "--font-sans",
 });
 
-const serif = Noto_Serif_Hebrew({
+const serif = Frank_Ruhl_Libre({
   subsets: ["hebrew", "latin"],
+  weight: ["500", "700", "800"],
   variable: "--font-serif",
 });
 
 export const metadata: Metadata = {
   title: "Menuz Tableside",
-  description: "תפריט שולחן לדדה, לשף עידן הלפרין ול-BEER TIME.",
+  description: "תפריט שולחן לגרדן 83, גרדן V2, דדה, ביר טיים ושף עידן הלפרין.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

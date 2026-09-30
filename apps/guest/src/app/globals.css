@@ -130,5 +130,26 @@
 }
 
 .font-serif {
-  font-family: var(--font-serif), "Noto Serif Hebrew", serif;
+  font-family: var(--font-serif), "Frank Ruhl Libre", serif;
+}
+
+.wood-menu {
+  background-color: #2a1810;
+  background-image:
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 18px),
+    repeating-linear-gradient(180deg, rgba(120, 72, 36, 0.28) 0 22px, rgba(28, 16, 10, 0.35) 22px 44px),
+    radial-gradient(circle at 20% 10%, #6a4228, #1a100c 70%);
+}
+
+.wood-card {
+  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.45);
+}
+
+.tape-label {
+  display: inline-block;
+  background: #f0e2beee;
+  color: #241a10;
+  padding: 0.15rem 1.1rem;
+  transform: rotate(-2deg);
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.35);
 }

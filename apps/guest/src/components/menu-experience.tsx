@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   formatIls,
   previewPackage,
+  statusLine,
   t,
   textOf,
   type CartLine,
   type Lang,
+  type MenuPackage,
   type VenueSnapshot,
 } from "@menuz/core";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +39,8 @@ type Order = {
   totalCents: number;
   waitMinutes: [number, number];
   paymentMode: "pay_at_table";
+  createdAt: string;
+  waiterName: string;
 };
 
 const sourceKey = {
@@ -49,6 +53,7 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
   const [lang, setLang] = useState<Lang>("he");
   const [snapshot, setSnapshot] = useState<VenueSnapshot | null>(null);
   const [error, setError] = useState("");
+  const [packageId, setPackageId] = useState<string | null>(null);
   const [guests, setGuests] = useState(4);
   const [selection, setSelection] = useState<Record<string, string>>({});
   const [openSlot, setOpenSlot] = useState<string | null>(null);
@@ -85,11 +90,9 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
       .then((next) => {
         if (cancelled) return;
         setSnapshot(next);
-        const pkg = next.packages[0];
-        if (pkg) {
-          setGuests(pkg.defaultGuests);
-          setSelection(Object.fromEntries(pkg.components.map((component) => [component.slot, component.defaultItemId])));
-        }
+        const pkg = next.packages.find((entry) => entry.active !== false);
+        setPackageId(pkg?.id ?? null);
+        if (pkg) openPackage(pkg);
       })
       .catch(() => {
         if (!cancelled) setError("load");
@@ -100,11 +103,19 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
   }, [slug]);
 
   const table = snapshot?.venue.tables.find((entry) => entry.code === code) ?? null;
-  const pkg = snapshot?.packages[0];
+  const activePackages = snapshot?.packages.filter((entry) => entry.active !== false) ?? [];
+  const pkg = activePackages.find((entry) => entry.id === packageId) ?? activePackages[0] ?? null;
   const preview = useMemo(() => {
     if (!snapshot || !pkg) return null;
     return previewPackage(snapshot, pkg, guests, selection);
   }, [snapshot, pkg, guests, selection]);
+
+  function openPackage(next: MenuPackage) {
+    setPackageId(next.id);
+    setGuests(next.defaultGuests);
+    setSelection(Object.fromEntries(next.components.map((component) => [component.slot, component.defaultItemId])));
+    setOpenSlot(null);
+  }
 
   function remember(line: CartLine) {
     setCart((current) => [...current, line]);
@@ -128,8 +139,18 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
     setPending(null);
   }
 
+  useEffect(() => {
+    if (!order) return;
+    const tick = window.setInterval(() => {
+      api<{ order: Order }>(`/orders/${order.id}`)
+        .then((result) => setOrder(result.order))
+        .catch(() => undefined);
+    }, 2000);
+    return () => window.clearInterval(tick);
+  }, [order?.id]);
+
   async function sendOrder() {
-    if (!snapshot || !preview) return;
+    if (!snapshot) return;
     setSending(true);
     setSendError("");
     const key = idem || crypto.randomUUID();
@@ -183,8 +204,9 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
     );
   }
 
-  if (!snapshot || !pkg || !preview) return null;
+  if (!snapshot) return null;
   const theme = snapshot.venue.theme;
+  const wood = snapshot.venue.skin === "wood";
   const itemsById = new Map(snapshot.items.map((item) => [item.id, item]));
   const cartCount = cart.reduce((sum, line) => sum + (line.type === "package" ? 1 : line.qty), 0);
   const cartTotal = cart.reduce((sum, line) => {
@@ -197,7 +219,7 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
   }, 0);
 
   return (
-    <div dir={lang === "he" ? "rtl" : "ltr"} lang={lang} className="min-h-dvh" style={{ background: theme.bg, color: theme.ink }}>
+    <div dir={lang === "he" ? "rtl" : "ltr"} lang={lang} className={wood ? "wood-menu min-h-dvh" : "min-h-dvh"} style={wood ? { color: theme.ink } : { background: theme.bg, color: theme.ink }}>
       <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col">
         <header className="sticky top-0 z-20 flex items-start justify-between gap-3 px-4 py-4" style={{ background: theme.bg }}>
           <div>
@@ -242,7 +264,23 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
         ) : (
           <div className="flex flex-1 flex-col gap-6 px-4 pb-28">
             <p className="text-sm leading-relaxed" style={{ color: theme.muted }}>{textOf(snapshot.contentNote, lang)}</p>
-            <section className="rounded-3xl p-4" style={{ background: theme.card }}>
+            <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={copy.packages}>
+              {activePackages.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={pkg?.id === entry.id}
+                  className="min-h-12 shrink-0 rounded-full px-4 text-sm font-semibold"
+                  style={{ background: pkg?.id === entry.id ? theme.accent : theme.card, color: pkg?.id === entry.id ? theme.accentInk : theme.ink }}
+                  onClick={() => openPackage(entry)}
+                >
+                  {textOf(entry.name, lang)}
+                </button>
+              ))}
+            </div>
+            {pkg && preview ? (
+            <section className={`rounded-3xl p-4 ${wood ? "wood-card" : ""}`} style={{ background: theme.card, transform: wood ? "rotate(-0.6deg)" : undefined }}>
               <p className="text-sm" style={{ color: theme.accent }}>{textOf(pkg.tagline, lang)}</p>
               <h2 className="mt-1 font-serif text-4xl">{textOf(pkg.name, lang)}</h2>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: theme.muted }}>{textOf(pkg.rules, lang)}</p>
@@ -322,6 +360,7 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
                 {copy.addPackage}
               </Button>
             </section>
+            ) : <p className="text-sm" style={{ color: theme.muted }}>{copy.noPackages}</p>}
 
             <section>
               <div className="mb-3 flex items-center justify-between">
@@ -349,6 +388,7 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
                 .slice()
                 .sort((a, b) => a.sort - b.sort)
                 .map((category) => {
+                  if (category.hidden) return null;
                   const dishes = snapshot.items.filter((item) => {
                     if (item.categoryId !== category.id) return false;
                     if (filters.vegetarian && !item.vegetarian) return false;
@@ -359,11 +399,13 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
                   if (!dishes.length) return null;
                   return (
                     <div key={category.id} className="mb-5">
-                      <h3 className="mb-2 text-sm font-semibold" style={{ color: theme.muted }}>{textOf(category.name, lang)}</h3>
-                      <ul className="space-y-2">
-                        {dishes.map((item) => (
-                          <li key={item.id} className="rounded-2xl p-3" style={{ background: theme.card, opacity: item.available ? 1 : 0.55 }}>
-                            <div className="flex items-start justify-between gap-3">
+                      <h3 className={wood ? "tape-label mb-3 font-serif text-2xl" : "mb-2 text-sm font-semibold"} style={wood ? undefined : { color: theme.muted }}>{textOf(category.name, lang)}</h3>
+                      {category.note ? <p className="mb-2 text-xs" style={{ color: theme.muted }}>{textOf(category.note, lang)}</p> : null}
+                      <ul className="space-y-3">
+                        {dishes.map((item, index) => (
+                          <li key={item.id} className={`overflow-hidden rounded-2xl ${wood ? "wood-card" : ""}`} style={{ background: theme.card, opacity: item.available ? 1 : 0.55, transform: wood ? `rotate(${index % 2 ? 1.2 : -1.2}deg)` : undefined }}>
+                            {item.image ? <img src={item.image} alt="" className="h-36 w-full object-cover" /> : null}
+                            <div className="flex items-start justify-between gap-3 p-3">
                               <div>
                                 <p className="font-semibold">{textOf(item.name, lang)}</p>
                                 <p className="mt-1 text-sm leading-relaxed" style={{ color: theme.muted }}>{textOf(item.description, lang)}</p>
@@ -421,17 +463,19 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
       </Dialog>
 
       <Sheet open={cartOpen || Boolean(order)} onOpenChange={(open) => { if (!order) setCartOpen(open); }}>
-        <SheetContent side="bottom" className="max-h-[85dvh] rounded-t-3xl" style={{ background: theme.card, color: theme.ink }}>
+        <SheetContent side="bottom" className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-t-3xl" style={{ background: theme.card, color: theme.ink, left: "max(0px, calc(50% - 215px))", right: "auto", width: "min(430px, 100%)" }}>
           {order ? (
             <>
               <SheetHeader>
                 <SheetTitle>{copy.orderIn} {order.id}</SheetTitle>
                 <SheetDescription style={{ color: theme.muted }}>{copy.payAtTable} · {copy.unpaid}</SheetDescription>
               </SheetHeader>
-              <div className="px-4 pb-4">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
                 <p className="text-3xl font-semibold tabular-nums">{formatIls(order.totalCents, lang)}</p>
+                <p className="mt-2 text-2xl font-semibold tabular-nums"><Elapsed since={order.createdAt} /></p>
+                <p style={{ color: theme.muted }}>{copy.elapsed}</p>
                 <p className="mt-2" style={{ color: theme.muted }}>{copy.wait}: {order.waitMinutes[0]}–{order.waitMinutes[1]} {copy.minutes}</p>
-                <p className="mt-1">{copy.status[order.status]}</p>
+                <p className="mt-1">{statusLine(lang, order.status, order.waiterName)}</p>
                 <Button className="mt-6 h-12 w-full" variant="outline" onClick={() => { setOrder(null); setCartOpen(false); }}>{copy.backToMenu}</Button>
               </div>
             </>
@@ -441,16 +485,13 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
                 <SheetTitle>{copy.cart}</SheetTitle>
                 <SheetDescription style={{ color: theme.muted }}>{table ? textOf(table.label, lang) : ""} · {copy.payAtTable}</SheetDescription>
               </SheetHeader>
-              <div className="space-y-3 overflow-auto px-4">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-2">
                 {cart.length === 0 ? <p style={{ color: theme.muted }}>{copy.emptyCart}</p> : null}
                 {cart.map((line, index) => (
                   <div key={`${line.type}-${index}`} className="flex items-start justify-between gap-3 rounded-2xl p-3" style={{ background: theme.bg }}>
                     <div>
                       {line.type === "package" ? (
-                        <>
-                          <p className="font-semibold">{textOf(pkg.name, lang)} · {line.guests}</p>
-                          <p className="text-sm" style={{ color: theme.muted }}>{formatIls(previewPackage(snapshot, pkg, line.guests, line.selection).totalCents, lang)}</p>
-                        </>
+                        <PackageCartLine snapshot={snapshot} line={line} lang={lang} muted={theme.muted} />
                       ) : (
                         <p className="font-semibold">{textOf(itemsById.get(line.itemId)?.name ?? { he: "", en: "" }, lang)} × {line.qty}</p>
                       )}
@@ -464,7 +505,7 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
                 </label>
                 {sendError ? <p className="text-sm">{sendError === "price" ? copy.priceMismatch : copy.sendFailed}</p> : null}
               </div>
-              <SheetFooter>
+              <SheetFooter className="shrink-0">
                 <Button className="h-12 w-full text-base" style={{ background: theme.accent, color: theme.accentInk }} disabled={!cart.length || sending} onClick={sendOrder}>
                   {sending ? copy.sending : `${copy.send} · ${formatIls(cartTotal, lang)}`}
                 </Button>
@@ -475,4 +516,36 @@ export function MenuExperience({ slug, code }: { slug: string; code: string }) {
       </Sheet>
     </div>
   );
+}
+
+function PackageCartLine({
+  snapshot,
+  line,
+  lang,
+  muted,
+}: {
+  snapshot: VenueSnapshot;
+  line: Extract<CartLine, { type: "package" }>;
+  lang: Lang;
+  muted: string;
+}) {
+  const match = snapshot.packages.find((entry) => entry.id === line.packageId);
+  if (!match) return null;
+  return (
+    <>
+      <p className="font-semibold">{textOf(match.name, lang)} · {line.guests}</p>
+      <p className="text-sm" style={{ color: muted }}>{formatIls(previewPackage(snapshot, match, line.guests, line.selection).totalCents, lang)}</p>
+    </>
+  );
+}
+
+function Elapsed({ since }: { since: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const seconds = Math.max(0, Math.floor((now - Date.parse(since)) / 1000));
+  const minutes = Math.floor(seconds / 60);
+  return <span>{minutes}:{String(seconds % 60).padStart(2, "0")}</span>;
 }

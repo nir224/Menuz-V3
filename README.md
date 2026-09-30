@@ -1,14 +1,18 @@
 # Menuz Tableside
 
-Mobile menu for three Rishon LeZion leads. A guest opens a table URL, builds a group package in Hebrew or English, and sends the order to pay at the table. Staff see the ticket on a separate admin host.
+Mobile menu for the tableside venues. A guest opens a table URL, picks an active package, and sends the order to pay at the table. Staff see the ticket, with a running timer, on a separate admin host.
 
-| Lead | Address | Package |
+| Venue | Address | Package |
 |---|---|---|
+| גרדן 83 | Rothschild 83 | בירגר |
+| גרדן V2 | Rothschild 83 | same menu, wood-table skin |
 | דדה | Herzl 75 | סופרה |
-| שף עידן הלפרין | Motzkin 5 | שולחן השף (demo menu) |
 | BEER TIME | Herzl 47 | הסיבוב / The Round |
+| שף עידן הלפרין | Motzkin 5 | שולחן השף (demo menu) |
 
-Deda prices follow the public menu (regular price, not the member price). Beer Time bottle names and prices follow the shop list on beer-time.co.il. Food at Beer Time, and the whole chef menu, are marked as estimates or a demo.
+Garden 83 and Garden V2 use the dishes and package from the Garden 83 demo menu. Deda prices follow the public menu (regular price, not the member price). Beer Time bottle names and prices follow the shop list on beer-time.co.il. Food at Beer Time, and the whole chef menu, are marked as estimates or a demo.
+
+Admin can create an empty business or copy another venue into a new slug, edit packages and section order, and publish. Guests only see packages that are turned on. A waiter types their name and takes the ticket; that name shows on the staff board and on the guest confirmation.
 
 ## Run locally
 

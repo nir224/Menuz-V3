@@ -43,4 +43,10 @@ const tampered = priceCart(beer, [
 ]);
 assert.ok(tampered.issues.includes("bad_swap"));
 
+const inactive = priceCart(
+  { ...beer, packages: [{ ...round, active: false }] },
+  [{ type: "package", packageId: round.id, guests: 4, selection: { drink: "bt_lowen", chips: "bt_chips", platter: "bt_cheese" } }],
+);
+assert.ok(inactive.issues.includes("unknown_package"));
+
 console.log("quote tests passed");

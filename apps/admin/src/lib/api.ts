@@ -17,6 +17,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const method = (init?.method ?? "GET").toUpperCase();
   const response = await fetch(`/menuz-api${path}`, {
+    cache: "no-store",
     ...init,
     body: init?.body ?? (method === "GET" ? undefined : "{}"),
     headers: {
